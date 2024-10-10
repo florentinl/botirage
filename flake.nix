@@ -42,6 +42,20 @@
 
           RUST_SRC_PATH = "${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}";
         };
+
+        defaultPackage = pkgs.rustPlatform.buildRustPackage {
+          pname = "botirage";
+          version = "0.1.0";
+          src = ./.;
+          cargoLock.lockFile = ./Cargo.lock;
+          nativeBuildInputs = [
+            pkgs.pkg-config
+          ];
+          buildInputs = [
+            pkgs.openssl
+            pkgs.sqlite
+          ];
+        };
       }
     );
 }

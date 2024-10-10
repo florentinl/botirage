@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use teloxide::types::UserId;
 
+const DEFAULT_MONEY: i64 = 100;
+
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub(crate) enum State {
     Idle { player_money: HashMap<UserId, i64> },
@@ -41,14 +43,17 @@ impl State {
     }
 
     pub(crate) fn get(&self, player: &UserId) -> i64 {
-        self.player_money().get(player).copied().unwrap_or(1000)
+        self.player_money()
+            .get(player)
+            .copied()
+            .unwrap_or(DEFAULT_MONEY)
     }
 
     pub(crate) fn insert(&mut self, player: &UserId, delta_money: i64) {
         let player_money = self.player_money_mut();
         player_money.insert(
             *player,
-            player_money.get(&player).unwrap_or(&1000) + delta_money,
+            player_money.get(&player).unwrap_or(&DEFAULT_MONEY) + delta_money,
         );
     }
 

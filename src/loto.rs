@@ -4,22 +4,16 @@ use std::{
 };
 
 use teloxide::{
-    dispatching::dialogue::ErasedStorage,
     payloads::SendPollSetters,
-    prelude::Dialogue,
     requests::Requester,
     types::{Message, PollAnswer, UserId},
-    Bot,
 };
 
-use crate::{
-    utils::{get_usernames, HandlerResult},
-    State,
-};
+use crate::utils::{get_usernames, BotType, DialogueType, HandlerResult};
 
 pub(crate) async fn start_loto(
-    bot: Bot,
-    dialogue: Dialogue<State, ErasedStorage<State>>,
+    bot: BotType,
+    dialogue: DialogueType,
     poll_answers: Arc<Mutex<HashMap<UserId, u8>>>,
     msg: Message,
 ) -> HandlerResult {
@@ -46,8 +40,8 @@ pub(crate) async fn start_loto(
 }
 
 async fn draw_loto(
-    bot: Bot,
-    dialogue: Dialogue<State, ErasedStorage<State>>,
+    bot: BotType,
+    dialogue: DialogueType,
     msg: Message,
     poll: Message,
     poll_answers: Arc<Mutex<HashMap<UserId, u8>>>,
@@ -108,7 +102,7 @@ fn get_winner_ids(poll_answers: &HashMap<UserId, u8>, dice_value: u8) -> Vec<Use
 }
 
 pub(crate) async fn register_answer(
-    _bot: Bot,
+    _bot: BotType,
     poll_answers: Arc<Mutex<HashMap<UserId, u8>>>,
     pa: PollAnswer,
 ) -> HandlerResult {

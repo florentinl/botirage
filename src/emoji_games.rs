@@ -1,17 +1,14 @@
 use teloxide::{
-    dispatching::dialogue::ErasedStorage,
     payloads::SetMessageReactionSetters,
-    prelude::Dialogue,
     requests::Requester,
     types::{Dice, DiceEmoji, Message, MessageDice, MessageKind, ReactionType},
-    Bot,
 };
 
-use crate::{utils::HandlerResult, State};
+use crate::utils::{BotType, DialogueType, HandlerResult};
 
 pub(crate) async fn emoji_games_handler(
-    bot: Bot,
-    dialogue: Dialogue<State, ErasedStorage<State>>,
+    bot: BotType,
+    dialogue: DialogueType,
     msg: Message,
 ) -> HandlerResult {
     let player = msg.clone().from.unwrap().id;

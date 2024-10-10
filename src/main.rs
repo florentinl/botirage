@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 
+use commands::{balance, help, leaderboard};
 use emoji_games::emoji_games_handler;
 use log::info;
 use loto::{register_answer, start_loto};
@@ -11,10 +12,11 @@ use teloxide::dispatching::dialogue::serializer::Json;
 use teloxide::dispatching::dialogue::{self, ErasedStorage, SqliteStorage, Storage};
 use teloxide::dispatching::UpdateHandler;
 use teloxide::prelude::*;
-use teloxide::types::{MessageKind, ReplyParameters};
+use teloxide::types::MessageKind;
 use teloxide::utils::command::BotCommands;
-use utils::{get_username, HandlerResult};
+use utils::{BotType, DialogueType, HandlerResult};
 
+mod commands;
 mod emoji_games;
 mod loto;
 mod state;
@@ -81,58 +83,7 @@ fn schema() -> UpdateHandler<Box<dyn Error + Send + Sync + 'static>> {
         .branch(dialogue::enter::<Update, ErasedStorage<State>, State, _>().branch(message_handler))
 }
 
-async fn help(bot: Bot, msg: Message) -> HandlerResult {
-    bot.send_message(msg.chat.id, Command::descriptions().to_string())
-        .await?;
-    Ok(())
-}
-
-async fn balance(
-    bot: Bot,
-    dialogue: Dialogue<State, ErasedStorage<State>>,
-    msg: Message,
-) -> HandlerResult {
-    let player = msg.clone().from.unwrap().id;
-    let state = dialogue.get().await?.unwrap();
-    let player_money = state.get(&player);
-    bot.send_message(
-        msg.chat.id,
-        format!(
-            "@{}, tu as {}💵!",
-            msg.from.unwrap().username.unwrap(),
-            player_money
-        ),
-    )
-    .reply_parameters(ReplyParameters::new(msg.id))
-    .await?;
-    Ok(())
-}
-
-async fn leaderboard(
-    bot: Bot,
-    msg: Message,
-    dialogue: Dialogue<State, ErasedStorage<State>>,
-) -> HandlerResult {
-    let state = dialogue.get().await?.unwrap();
-    let leaderboard = state.leaderboard();
-    let mut message = "Classement ForbeCS:\n".to_owned();
-    for &(user_id, money) in leaderboard.iter().take(10) {
-        message.push_str(&format!(
-            "{}: {}💵\n",
-            get_username(&bot, msg.chat.id, &user_id).await,
-            money
-        ));
-    }
-
-    bot.send_message(msg.chat.id, message).await?;
-    Ok(())
-}
-
-async fn message_handler(
-    bot: Bot,
-    dialogue: Dialogue<State, ErasedStorage<State>>,
-    msg: Message,
-) -> HandlerResult {
+async fn message_handler(bot: BotType, dialogue: DialogueType, msg: Message) -> HandlerResult {
     if let MessageKind::Dice(_) = msg.kind.clone() {
         emoji_games_handler(bot, dialogue, msg).await?;
     }
@@ -140,7 +91,7 @@ async fn message_handler(
     Ok(())
 }
 
-async fn invalid_state(bot: Bot, msg: Message) -> HandlerResult {
+async fn invalid_state(bot: BotType, msg: Message) -> HandlerResult {
     bot.send_message(msg.chat.id, "Commande indisponible")
         .await?;
 
