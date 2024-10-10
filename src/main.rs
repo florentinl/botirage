@@ -10,7 +10,7 @@ use teloxide::dispatching::dialogue::serializer::Json;
 use teloxide::dispatching::dialogue::{self, ErasedStorage, SqliteStorage, Storage};
 use teloxide::dispatching::UpdateHandler;
 use teloxide::prelude::*;
-use teloxide::types::{MessageKind, ReactionType, ReplyParameters};
+use teloxide::types::{MessageKind, ReplyParameters};
 use teloxide::utils::command::BotCommands;
 use utils::{get_username, HandlerResult};
 
@@ -31,8 +31,6 @@ enum Command {
     Roll,
     #[command(description = "Regarde ton solde")]
     Balance,
-    #[command(description = "(dev) free money")]
-    Money,
     #[command(description = "Classement des gens les plus riches")]
     Leaderboard,
 }
@@ -64,7 +62,6 @@ fn schema() -> UpdateHandler<Box<dyn Error + Send + Sync + 'static>> {
     let command_handler = teloxide::filter_command::<Command, _>()
         .branch(case![Command::Help].endpoint(help))
         .branch(case![Command::Balance].endpoint(balance))
-        .branch(case![Command::Money].endpoint(money))
         .branch(case![Command::Leaderboard].endpoint(leaderboard))
         .branch(
             case![State::Idle { player_money }]
@@ -107,25 +104,6 @@ async fn balance(
     )
     .reply_parameters(ReplyParameters::new(msg.id))
     .await?;
-    Ok(())
-}
-
-async fn money(
-    bot: Bot,
-    dialogue: Dialogue<State, ErasedStorage<State>>,
-    msg: Message,
-) -> HandlerResult {
-    let player = msg.from.unwrap().id;
-    let mut state = dialogue.get().await?.unwrap();
-    state.insert(&player, 1000);
-    dialogue.update(state).await?;
-
-    bot.set_message_reaction(msg.chat.id, msg.id)
-        .reaction(vec![ReactionType::Emoji {
-            emoji: "🍾".into()
-        }])
-        .await?;
-
     Ok(())
 }
 

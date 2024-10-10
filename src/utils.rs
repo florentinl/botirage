@@ -13,3 +13,11 @@ pub(crate) async fn get_username(bot: &Bot, chat_id: ChatId, user_id: &UserId) -
         None => format!("{}(mets un pseudo stp)", user.first_name),
     }
 }
+
+pub(crate) async fn get_usernames(bot: &Bot, chat_id: &ChatId, ids: &[UserId]) -> Vec<String> {
+    let mut winners = vec![];
+    for id in ids.into_iter() {
+        winners.push(get_username(bot, *chat_id, &id).await);
+    }
+    winners
+}

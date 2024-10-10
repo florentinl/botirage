@@ -8,12 +8,12 @@ use teloxide::{
     payloads::SendPollSetters,
     prelude::Dialogue,
     requests::Requester,
-    types::{ChatId, Message, PollAnswer, UserId},
+    types::{Message, PollAnswer, UserId},
     Bot,
 };
 
 use crate::{
-    utils::{get_username, HandlerResult},
+    utils::{get_usernames, HandlerResult},
     State,
 };
 
@@ -23,11 +23,11 @@ pub(crate) async fn start_loto(
     poll_answers: Arc<Mutex<HashMap<UserId, u8>>>,
     msg: Message,
 ) -> HandlerResult {
-    let player_money = match dialogue.get().await?.unwrap() {
-        State::Idle { player_money } => player_money,
-        _ => unreachable!(),
-    };
     poll_answers.lock().unwrap().clear();
+
+    let state = dialogue.get().await?.unwrap();
+    dialogue.update(state.to_receiving_poll_answers()).await?;
+
     let poll = bot
         .send_poll(
             msg.chat.id,
@@ -35,10 +35,6 @@ pub(crate) async fn start_loto(
             (1..=6).map(|x| x.to_string()),
         )
         .is_anonymous(false)
-        .await?;
-
-    dialogue
-        .update(State::ReceivingPollAnswers { player_money })
         .await?;
 
     tokio::spawn(async move {
@@ -67,7 +63,7 @@ async fn draw_loto(
     let dice_value = dice.dice().unwrap().value;
 
     let winner_ids = get_winner_ids(&poll_answers.lock().unwrap().to_owned(), dice_value);
-    let winners = get_winner_handles(&bot, &msg.chat.id, &winner_ids).await;
+    let winners = get_usernames(&bot, &msg.chat.id, &winner_ids).await;
 
     tokio::time::sleep(std::time::Duration::from_secs(4)).await;
 
@@ -109,14 +105,6 @@ fn get_winner_ids(poll_answers: &HashMap<UserId, u8>, dice_value: u8) -> Vec<Use
             }
         })
         .collect()
-}
-
-async fn get_winner_handles(bot: &Bot, chat_id: &ChatId, ids: &[UserId]) -> Vec<String> {
-    let mut winners = vec![];
-    for id in ids.into_iter() {
-        winners.push(get_username(bot, *chat_id, &id).await);
-    }
-    winners
 }
 
 pub(crate) async fn register_answer(

@@ -57,4 +57,10 @@ impl State {
             player_money: self.player_money().clone(),
         }
     }
+
+    pub(crate) fn to_receiving_poll_answers(&self) -> Self {
+        Self::ReceivingPollAnswers {
+            player_money: self.player_money().clone(),
+        }
+    }
 }
