@@ -2,13 +2,19 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 
+use emoji_games::slot_machine_handler;
 use log::info;
+use loto::{register_answer, start_loto};
 use teloxide::dispatching::dialogue::{self, InMemStorage};
 use teloxide::dispatching::UpdateHandler;
 use teloxide::prelude::*;
+use teloxide::types::{Dice, DiceEmoji, MessageDice, MessageKind};
 use teloxide::utils::command::BotCommands;
+use utils::HandlerResult;
 
-type HandlerResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
+mod emoji_games;
+mod loto;
+mod utils;
 
 #[derive(Clone, Default, Debug)]
 enum State {
@@ -51,11 +57,13 @@ fn schema() -> UpdateHandler<Box<dyn Error + Send + Sync + 'static>> {
         .branch(case![Command::Help].endpoint(help))
         .branch(
             case![State::Idle]
-                .branch(case![Command::Roll].endpoint(start_poll))
+                .branch(case![Command::Roll].endpoint(start_loto))
                 .branch(dptree::endpoint(invalid_state)),
         );
 
-    let message_handler = Update::filter_message().branch(command_handler);
+    let message_handler = Update::filter_message()
+        .branch(command_handler)
+        .branch(dptree::endpoint(message_handler));
 
     let poll_handler = Update::filter_poll_answer().endpoint(register_answer);
 
@@ -70,87 +78,17 @@ async fn help(bot: Bot, msg: Message) -> HandlerResult {
     Ok(())
 }
 
-async fn start_poll(
-    bot: Bot,
-    dialogue: Dialogue<State, InMemStorage<State>>,
-    poll_answers: Arc<Mutex<HashMap<UserId, u8>>>,
-    msg: Message,
-) -> HandlerResult {
-    let poll = bot
-        .send_poll(msg.chat.id, "Roll a dice!", (1..=6).map(|x| x.to_string()))
-        .is_anonymous(false)
-        .await?;
-    poll_answers.lock().unwrap().clear();
-    dialogue.update(State::ReceivingPollAnswers).await?;
-
-    tokio::spawn(async move {
-        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-        bot.stop_poll(msg.chat.id, poll.id).await.unwrap();
-        bot.send_message(msg.chat.id, "Poll closed. Rolling the dice...")
-            .await
-            .unwrap();
-        let dice = bot.send_dice(msg.chat.id).await.unwrap();
-        let dice_value = dice.dice().unwrap().value;
-
-        let winner_ids = get_winners(poll_answers.lock().unwrap().to_owned(), dice_value);
-
-        let mut winners = vec![];
-        for id in winner_ids.into_iter() {
-            winners.push(
-                bot.get_chat_member(msg.chat.id, id)
-                    .await
-                    .unwrap()
-                    .user
-                    .username
-                    .unwrap(),
-            );
+async fn message_handler(bot: Bot, msg: Message) -> HandlerResult {
+    if let MessageKind::Dice(MessageDice { dice: dice_message }) = msg.kind.clone() {
+        match dice_message {
+            Dice {
+                emoji: DiceEmoji::SlotMachine,
+                value,
+            } => slot_machine_handler(bot, msg, value).await?,
+            _ => todo!(),
         }
+    }
 
-        let winners = winners;
-
-        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-
-        bot.send_message(
-            msg.chat.id,
-            format!(
-                "The dice rolled: {}\nWinners: {}",
-                dice_value,
-                winners.join(", ")
-            ),
-        )
-        .await
-        .unwrap();
-
-        dialogue.update(State::Idle).await.unwrap();
-
-        dialogue
-    });
-
-    Ok(())
-}
-
-fn get_winners(poll_answers: HashMap<UserId, u8>, dice_value: u8) -> Vec<UserId> {
-    poll_answers
-        .iter()
-        .filter_map(|(user_id, answer)| {
-            if *answer == dice_value {
-                Some(*user_id)
-            } else {
-                None
-            }
-        })
-        .collect()
-}
-
-async fn register_answer(
-    _bot: Bot,
-    poll_answers: Arc<Mutex<HashMap<UserId, u8>>>,
-    pa: PollAnswer,
-) -> HandlerResult {
-    poll_answers.lock().unwrap().insert(
-        pa.voter.user().unwrap().id,
-        pa.option_ids.first().unwrap() + 1,
-    );
     Ok(())
 }
 
