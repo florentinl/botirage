@@ -66,10 +66,16 @@ async fn draw_loto(
     let dice = bot.send_dice(msg.chat.id).await.unwrap();
     let dice_value = dice.dice().unwrap().value;
 
-    let winner_ids = get_winner_ids(poll_answers.lock().unwrap().to_owned(), dice_value);
-    let winners = get_winner_handles(&bot, msg.chat.id, winner_ids).await;
+    let winner_ids = get_winner_ids(&poll_answers.lock().unwrap().to_owned(), dice_value);
+    let winners = get_winner_handles(&bot, &msg.chat.id, &winner_ids).await;
 
     tokio::time::sleep(std::time::Duration::from_secs(4)).await;
+
+    let mut state = dialogue.get().await?.unwrap();
+    for winner_id in &winner_ids {
+        state.insert(winner_id, 500);
+    }
+    dialogue.update(state.to_idle()).await.unwrap();
 
     match &*winners {
         [] => {
@@ -89,21 +95,15 @@ async fn draw_loto(
         }
     };
 
-    let player_money = match dialogue.get().await?.unwrap() {
-        State::ReceivingPollAnswers { player_money } => player_money,
-        _ => unreachable!(),
-    };
-    dialogue.update(State::Idle { player_money }).await.unwrap();
-
     Ok(())
 }
 
-fn get_winner_ids(poll_answers: HashMap<UserId, u8>, dice_value: u8) -> Vec<UserId> {
+fn get_winner_ids(poll_answers: &HashMap<UserId, u8>, dice_value: u8) -> Vec<UserId> {
     poll_answers
         .iter()
-        .filter_map(|(user_id, answer)| {
-            if *answer == dice_value {
-                Some(*user_id)
+        .filter_map(|(&user_id, &answer)| {
+            if answer == dice_value {
+                Some(user_id)
             } else {
                 None
             }
@@ -111,10 +111,10 @@ fn get_winner_ids(poll_answers: HashMap<UserId, u8>, dice_value: u8) -> Vec<User
         .collect()
 }
 
-async fn get_winner_handles(bot: &Bot, chat_id: ChatId, ids: Vec<UserId>) -> Vec<String> {
+async fn get_winner_handles(bot: &Bot, chat_id: &ChatId, ids: &[UserId]) -> Vec<String> {
     let mut winners = vec![];
     for id in ids.into_iter() {
-        winners.push(get_username(bot, chat_id, &id).await);
+        winners.push(get_username(bot, *chat_id, &id).await);
     }
     winners
 }

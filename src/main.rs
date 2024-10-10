@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex};
 use emoji_games::emoji_games_handler;
 use log::info;
 use loto::{register_answer, start_loto};
+use state::State;
 use teloxide::dispatching::dialogue::serializer::Json;
 use teloxide::dispatching::dialogue::{self, ErasedStorage, SqliteStorage, Storage};
 use teloxide::dispatching::UpdateHandler;
@@ -15,48 +16,8 @@ use utils::{get_username, HandlerResult};
 
 mod emoji_games;
 mod loto;
+mod state;
 mod utils;
-
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
-enum State {
-    Idle { player_money: HashMap<UserId, i64> },
-    ReceivingPollAnswers { player_money: HashMap<UserId, i64> },
-}
-
-impl Default for State {
-    fn default() -> Self {
-        Self::Idle {
-            player_money: HashMap::default(),
-        }
-    }
-}
-
-impl State {
-    fn player_money(&self) -> &HashMap<UserId, i64> {
-        match self {
-            Self::Idle { player_money } => player_money,
-            Self::ReceivingPollAnswers { player_money } => player_money,
-        }
-    }
-    fn player_money_mut(&mut self) -> &mut HashMap<UserId, i64> {
-        match self {
-            Self::Idle { player_money } => player_money,
-            Self::ReceivingPollAnswers { player_money } => player_money,
-        }
-    }
-
-    fn get(&self, player: &UserId) -> i64 {
-        self.player_money().get(player).copied().unwrap_or(1000)
-    }
-
-    fn insert(&mut self, player: &UserId, delta_money: i64) {
-        let player_money = self.player_money_mut();
-        player_money.insert(
-            *player,
-            player_money.get(&player).unwrap_or(&1000) + delta_money,
-        );
-    }
-}
 
 #[derive(BotCommands, Clone)]
 #[command(
@@ -135,7 +96,7 @@ async fn balance(
 ) -> HandlerResult {
     let player = msg.clone().from.unwrap().id;
     let state = dialogue.get().await?.unwrap();
-    let player_money = state.player_money().get(&player).unwrap_or(&1000);
+    let player_money = state.get(&player);
     bot.send_message(
         msg.chat.id,
         format!(
@@ -156,11 +117,7 @@ async fn money(
 ) -> HandlerResult {
     let player = msg.from.unwrap().id;
     let mut state = dialogue.get().await?.unwrap();
-    let player_money_mut = state.player_money_mut();
-    player_money_mut.insert(
-        player,
-        player_money_mut.get(&player).unwrap_or(&1000) + 1000,
-    );
+    state.insert(&player, 1000);
     dialogue.update(state).await?;
 
     bot.set_message_reaction(msg.chat.id, msg.id)
@@ -178,14 +135,12 @@ async fn leaderboard(
     dialogue: Dialogue<State, ErasedStorage<State>>,
 ) -> HandlerResult {
     let state = dialogue.get().await?.unwrap();
-    let player_money = state.player_money();
-    let mut leaderboard: Vec<_> = player_money.iter().collect();
-    leaderboard.sort_by_key(|(_, &money)| -money);
+    let leaderboard = state.leaderboard();
     let mut message = "Classement ForbeCS:\n".to_owned();
     for &(user_id, money) in leaderboard.iter().take(10) {
         message.push_str(&format!(
             "{}: {}💵\n",
-            get_username(&bot, msg.chat.id, user_id).await,
+            get_username(&bot, msg.chat.id, &user_id).await,
             money
         ));
     }
