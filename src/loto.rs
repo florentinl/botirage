@@ -12,7 +12,10 @@ use teloxide::{
     Bot,
 };
 
-use crate::{utils::HandlerResult, State};
+use crate::{
+    utils::{get_username, HandlerResult},
+    State,
+};
 
 pub(crate) async fn start_loto(
     bot: Bot,
@@ -26,7 +29,11 @@ pub(crate) async fn start_loto(
     };
     poll_answers.lock().unwrap().clear();
     let poll = bot
-        .send_poll(msg.chat.id, "Roll a dice!", (1..=6).map(|x| x.to_string()))
+        .send_poll(
+            msg.chat.id,
+            "Placez vos paris!",
+            (1..=6).map(|x| x.to_string()),
+        )
         .is_anonymous(false)
         .await?;
 
@@ -35,7 +42,7 @@ pub(crate) async fn start_loto(
         .await?;
 
     tokio::spawn(async move {
-        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+        tokio::time::sleep(std::time::Duration::from_secs(30)).await;
         let _ = draw_loto(bot, dialogue, msg, poll, poll_answers).await;
     });
 
@@ -50,9 +57,12 @@ async fn draw_loto(
     poll_answers: Arc<Mutex<HashMap<UserId, u8>>>,
 ) -> HandlerResult {
     bot.stop_poll(msg.chat.id, poll.id).await.unwrap();
-    bot.send_message(msg.chat.id, "Poll closed. Rolling the dice...")
-        .await
-        .unwrap();
+    bot.send_message(
+        msg.chat.id,
+        "Les paris sont fermés. C'est l'heure du lancé...",
+    )
+    .await
+    .unwrap();
     let dice = bot.send_dice(msg.chat.id).await.unwrap();
     let dice_value = dice.dice().unwrap().value;
 
@@ -63,14 +73,17 @@ async fn draw_loto(
 
     match &*winners {
         [] => {
-            bot.send_message(msg.chat.id, "And the winners are 🥁🥁🥁...  No one 😢")
-                .await?
+            bot.send_message(
+                msg.chat.id,
+                "Et les heureux gagnants sont 🥁🥁🥁...  personne 😢",
+            )
+            .await?
         }
 
         _ => {
             bot.send_message(
                 msg.chat.id,
-                "And the winners are 🥁🥁🥁... ".to_owned() + &winners.join(", "),
+                "Et les gagnants sont 🥁🥁🥁... ".to_owned() + &winners.join(", "),
             )
             .await?
         }
@@ -101,14 +114,7 @@ fn get_winner_ids(poll_answers: HashMap<UserId, u8>, dice_value: u8) -> Vec<User
 async fn get_winner_handles(bot: &Bot, chat_id: ChatId, ids: Vec<UserId>) -> Vec<String> {
     let mut winners = vec![];
     for id in ids.into_iter() {
-        winners.push(
-            bot.get_chat_member(chat_id, id)
-                .await
-                .unwrap()
-                .user
-                .username
-                .unwrap(),
-        );
+        winners.push(get_username(bot, chat_id, &id).await);
     }
     winners
 }

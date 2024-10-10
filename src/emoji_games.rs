@@ -19,8 +19,14 @@ pub(crate) async fn emoji_games_handler(
     let player = msg.clone().from.unwrap().id;
     let mut state = dialogue.get().await?.unwrap();
     if state.get(&player) < 1 {
-        bot.send_message(msg.chat.id, "You don't have enough money to play!")
-            .await?;
+        bot.send_message(
+            msg.chat.id,
+            format!(
+                "@{}, tu n'as plus assez d'argent pour jouer! Essaie de soudoyer le maître du jeu pour obtenir plus de 💵!",
+                msg.from.unwrap().username.unwrap()
+            ),
+        )
+        .await?;
         bot.delete_message(msg.chat.id, msg.id).await?;
         return Ok(());
     }
@@ -35,7 +41,37 @@ pub(crate) async fn emoji_games_handler(
             emoji: DiceEmoji::SlotMachine,
             value,
         } => slot_machine_handler(value),
-        _ => todo!(),
+        Dice {
+            emoji: DiceEmoji::Darts,
+            value,
+        } => darts_handler(value),
+        Dice {
+            emoji: DiceEmoji::Basketball,
+            value,
+        } => basketball_handler(value),
+        Dice {
+            emoji: DiceEmoji::Bowling,
+            value,
+        } => bowling_handler(value),
+        Dice {
+            emoji: DiceEmoji::Football,
+            value,
+        } => football_handler(value),
+        Dice {
+            emoji: DiceEmoji::Dice,
+            value: _,
+        } => {
+            bot.send_message(
+                msg.chat.id,
+                format!(
+                    "Attention @{}! Seul le maître du jeu peut lancer les dés!",
+                    msg.from.unwrap().username.unwrap()
+                ),
+            )
+            .await?;
+            bot.delete_message(msg.chat.id, msg.id).await?;
+            return Ok(());
+        }
     };
 
     tokio::spawn(async move {
@@ -58,7 +94,7 @@ pub(crate) async fn emoji_games_handler(
     Ok(())
 }
 
-pub fn slot_machine_handler(value: u8) -> (&'static str, i64) {
+fn slot_machine_handler(value: u8) -> (&'static str, i64) {
     let value = value - 1;
     let (left, middle, right) = (
         (value >> 4) & 0b11,
@@ -71,5 +107,56 @@ pub fn slot_machine_handler(value: u8) -> (&'static str, i64) {
         _ if left == middle && left == right => ("🎉", 10),
         _ if left == middle || middle == right || left == right => ("😢", -1),
         _ => ("🥱", -1),
+    }
+}
+
+fn darts_handler(value: u8) -> (&'static str, i64) {
+    println!("Darts: {}", value);
+    match value {
+        1 => ("🤡", -1),
+        2 => ("🥱", -1),
+        3 => ("🤔", -1),
+        4 => ("👀", -1),
+        5 => ("🙊", -1),
+        6 => ("😎", 20),
+        _ => unreachable!(),
+    }
+}
+
+fn basketball_handler(value: u8) -> (&'static str, i64) {
+    println!("Basketball: {}", value);
+    match value {
+        1 => ("🫡", -1),
+        2 => ("🥱", -1),
+        3 => ("🥴", -1),
+        4 => ("🆒", 10),
+        5 => ("🤝", 20),
+        _ => unreachable!(),
+    }
+}
+
+fn bowling_handler(value: u8) -> (&'static str, i64) {
+    println!("Bowling: {}", value);
+    match value {
+        1 => ("🌚", -1),
+        2 => ("👨‍💻", -1),
+        3 => ("🤷‍♀", -1),
+        4 => ("😨", 10),
+        5 => ("🤨", 20),
+        6 => ("🗿", 30),
+        _ => unreachable!(),
+    }
+}
+
+fn football_handler(value: u8) -> (&'static str, i64) {
+    println!("Football: {}", value);
+    match value {
+        1 => ("🌭", -1),
+        2 => ("🐳", -1),
+        3 => ("💅", 5),
+        4 => ("🙏", 10),
+        5 => ("👏", 20),
+        6 => ("🦄", 30),
+        _ => unreachable!(),
     }
 }

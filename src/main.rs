@@ -11,7 +11,7 @@ use teloxide::dispatching::UpdateHandler;
 use teloxide::prelude::*;
 use teloxide::types::{MessageKind, ReactionType, ReplyParameters};
 use teloxide::utils::command::BotCommands;
-use utils::HandlerResult;
+use utils::{get_username, HandlerResult};
 
 mod emoji_games;
 mod loto;
@@ -61,17 +61,19 @@ impl State {
 #[derive(BotCommands, Clone)]
 #[command(
     rename_rule = "lowercase",
-    description = "These commands are supported:"
+    description = "Les commandes suivantes sont disponibles:"
 )]
 enum Command {
-    #[command(description = "display this text.")]
+    #[command(description = "Affiche ce texte")]
     Help,
-    #[command(description = "roll a dice.")]
+    #[command(description = "(bêta) Lance une loterie")]
     Roll,
-    #[command(description = "balance.")]
+    #[command(description = "Regarde ton solde")]
     Balance,
-    #[command(description = "money money.")]
+    #[command(description = "(dev) free money")]
     Money,
+    #[command(description = "Classement des gens les plus riches")]
+    Leaderboard,
 }
 
 #[tokio::main]
@@ -79,6 +81,7 @@ async fn main() {
     pretty_env_logger::init();
     info!("Starting bot...");
     let bot = Bot::from_env();
+    bot.set_my_commands(Command::bot_commands()).await.unwrap();
     let poll_answers: Arc<Mutex<HashMap<UserId, u8>>> = Arc::new(Mutex::new(HashMap::default()));
 
     let storage: Arc<ErasedStorage<State>> = SqliteStorage::open("database.db", Json)
@@ -101,6 +104,7 @@ fn schema() -> UpdateHandler<Box<dyn Error + Send + Sync + 'static>> {
         .branch(case![Command::Help].endpoint(help))
         .branch(case![Command::Balance].endpoint(balance))
         .branch(case![Command::Money].endpoint(money))
+        .branch(case![Command::Leaderboard].endpoint(leaderboard))
         .branch(
             case![State::Idle { player_money }]
                 .branch(case![Command::Roll].endpoint(start_loto))
@@ -129,12 +133,19 @@ async fn balance(
     dialogue: Dialogue<State, ErasedStorage<State>>,
     msg: Message,
 ) -> HandlerResult {
-    let player = msg.from.unwrap().id;
+    let player = msg.clone().from.unwrap().id;
     let state = dialogue.get().await?.unwrap();
     let player_money = state.player_money().get(&player).unwrap_or(&1000);
-    bot.send_message(msg.chat.id, format!("You have {} coins", player_money))
-        .reply_parameters(ReplyParameters::new(msg.id))
-        .await?;
+    bot.send_message(
+        msg.chat.id,
+        format!(
+            "@{}, tu as {}💵!",
+            msg.from.unwrap().username.unwrap(),
+            player_money
+        ),
+    )
+    .reply_parameters(ReplyParameters::new(msg.id))
+    .await?;
     Ok(())
 }
 
@@ -158,6 +169,28 @@ async fn money(
         }])
         .await?;
 
+    Ok(())
+}
+
+async fn leaderboard(
+    bot: Bot,
+    msg: Message,
+    dialogue: Dialogue<State, ErasedStorage<State>>,
+) -> HandlerResult {
+    let state = dialogue.get().await?.unwrap();
+    let player_money = state.player_money();
+    let mut leaderboard: Vec<_> = player_money.iter().collect();
+    leaderboard.sort_by_key(|(_, &money)| -money);
+    let mut message = "Classement ForbeCS:\n".to_owned();
+    for &(user_id, money) in leaderboard.iter().take(10) {
+        message.push_str(&format!(
+            "{}: {}💵\n",
+            get_username(&bot, msg.chat.id, user_id).await,
+            money
+        ));
+    }
+
+    bot.send_message(msg.chat.id, message).await?;
     Ok(())
 }
 
