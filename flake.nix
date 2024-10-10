@@ -22,6 +22,7 @@
           inherit system;
           overlays = [ (import rust-overlay) ];
         };
+        pkgsCross = pkgs.pkgsCross.aarch64-multiplatform;
         rust = pkgs.rust-bin.stable.latest.default.override {
           extensions = [
             "rust-src"
@@ -54,6 +55,20 @@
           buildInputs = [
             pkgs.openssl
             pkgs.sqlite
+          ];
+        };
+
+        packages.botirage = pkgsCross.rustPlatform.buildRustPackage {
+          pname = "botirage";
+          version = "0.1.0";
+          src = ./.;
+          cargoLock.lockFile = ./Cargo.lock;
+          nativeBuildInputs = [
+            pkgsCross.pkg-config
+          ];
+          buildInputs = [
+            pkgsCross.openssl
+            pkgsCross.sqlite
           ];
         };
       }
