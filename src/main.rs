@@ -6,6 +6,7 @@ use emoji_games::emoji_games_handler;
 use log::info;
 use loto::{register_answer, start_loto};
 use state::State;
+use teloxide::adaptors::throttle::Limits;
 use teloxide::dispatching::dialogue::serializer::Json;
 use teloxide::dispatching::dialogue::{self, ErasedStorage, SqliteStorage, Storage};
 use teloxide::dispatching::UpdateHandler;
@@ -39,7 +40,7 @@ enum Command {
 async fn main() {
     pretty_env_logger::init();
     info!("Starting bot...");
-    let bot = Bot::from_env();
+    let bot = Bot::from_env().throttle(Limits::default());
     bot.set_my_commands(Command::bot_commands()).await.unwrap();
     let poll_answers: Arc<Mutex<HashMap<UserId, u8>>> = Arc::new(Mutex::new(HashMap::default()));
 

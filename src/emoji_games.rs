@@ -1,4 +1,3 @@
-use log::info;
 use teloxide::{
     dispatching::dialogue::ErasedStorage,
     payloads::SetMessageReactionSetters,
@@ -6,7 +5,6 @@ use teloxide::{
     requests::Requester,
     types::{Dice, DiceEmoji, Message, MessageDice, MessageKind, ReactionType},
     Bot,
-    RequestError::RetryAfter,
 };
 
 use crate::{utils::HandlerResult, State};
@@ -76,16 +74,11 @@ pub(crate) async fn emoji_games_handler(
 
     tokio::spawn(async move {
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-        while let Err(RetryAfter(seconds)) = bot
-            .set_message_reaction(msg.chat.id, msg.id)
+        bot.set_message_reaction(msg.chat.id, msg.id)
             .reaction(vec![ReactionType::Emoji {
                 emoji: reaction.to_string(),
             }])
             .await
-        {
-            info!("Retry after {:?}", seconds);
-            tokio::time::sleep(seconds.duration()).await;
-        }
     });
 
     state.insert(&player, score);
@@ -111,7 +104,6 @@ fn slot_machine_handler(value: u8) -> (&'static str, i64) {
 }
 
 fn darts_handler(value: u8) -> (&'static str, i64) {
-    println!("Darts: {}", value);
     match value {
         1 => ("🤡", -1),
         2 => ("🥱", -1),
@@ -124,7 +116,6 @@ fn darts_handler(value: u8) -> (&'static str, i64) {
 }
 
 fn basketball_handler(value: u8) -> (&'static str, i64) {
-    println!("Basketball: {}", value);
     match value {
         1 => ("🫡", -1),
         2 => ("🥱", -1),
@@ -136,7 +127,6 @@ fn basketball_handler(value: u8) -> (&'static str, i64) {
 }
 
 fn bowling_handler(value: u8) -> (&'static str, i64) {
-    println!("Bowling: {}", value);
     match value {
         1 => ("🌚", -1),
         2 => ("👨‍💻", -1),
@@ -149,7 +139,6 @@ fn bowling_handler(value: u8) -> (&'static str, i64) {
 }
 
 fn football_handler(value: u8) -> (&'static str, i64) {
-    println!("Football: {}", value);
     match value {
         1 => ("🌭", -1),
         2 => ("🐳", -1),
