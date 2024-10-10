@@ -1,4 +1,5 @@
 .direnv/
+database.db
 
 
 # Added by cargo

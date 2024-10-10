@@ -4,7 +4,7 @@ use std::{
 };
 
 use teloxide::{
-    dispatching::dialogue::InMemStorage,
+    dispatching::dialogue::ErasedStorage,
     payloads::SendPollSetters,
     prelude::Dialogue,
     requests::Requester,
@@ -16,17 +16,23 @@ use crate::{utils::HandlerResult, State};
 
 pub(crate) async fn start_loto(
     bot: Bot,
-    dialogue: Dialogue<State, InMemStorage<State>>,
+    dialogue: Dialogue<State, ErasedStorage<State>>,
     poll_answers: Arc<Mutex<HashMap<UserId, u8>>>,
     msg: Message,
 ) -> HandlerResult {
+    let player_money = match dialogue.get().await?.unwrap() {
+        State::Idle { player_money } => player_money,
+        _ => unreachable!(),
+    };
     poll_answers.lock().unwrap().clear();
     let poll = bot
         .send_poll(msg.chat.id, "Roll a dice!", (1..=6).map(|x| x.to_string()))
         .is_anonymous(false)
         .await?;
 
-    dialogue.update(State::ReceivingPollAnswers).await?;
+    dialogue
+        .update(State::ReceivingPollAnswers { player_money })
+        .await?;
 
     tokio::spawn(async move {
         tokio::time::sleep(std::time::Duration::from_secs(5)).await;
@@ -38,7 +44,7 @@ pub(crate) async fn start_loto(
 
 async fn draw_loto(
     bot: Bot,
-    dialogue: Dialogue<State, InMemStorage<State>>,
+    dialogue: Dialogue<State, ErasedStorage<State>>,
     msg: Message,
     poll: Message,
     poll_answers: Arc<Mutex<HashMap<UserId, u8>>>,
@@ -70,7 +76,11 @@ async fn draw_loto(
         }
     };
 
-    dialogue.update(State::Idle).await.unwrap();
+    let player_money = match dialogue.get().await?.unwrap() {
+        State::ReceivingPollAnswers { player_money } => player_money,
+        _ => unreachable!(),
+    };
+    dialogue.update(State::Idle { player_money }).await.unwrap();
 
     Ok(())
 }
