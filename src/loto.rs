@@ -4,9 +4,9 @@ use std::{
 };
 
 use teloxide::{
-    payloads::{SendDiceSetters, SendMessageSetters, SendPollSetters},
+    payloads::{SendDiceSetters, SendMessageSetters, SendPollSetters, UnpinChatMessageSetters},
     requests::Requester,
-    types::{Message, PollAnswer, UserId},
+    types::{Message, PollAnswer, ReplyParameters, UserId},
 };
 
 use crate::utils::{get_usernames, BotType, DialogueType, HandlerResult};
@@ -25,7 +25,7 @@ pub(crate) async fn start_loto(
     let mut poll = bot
         .send_poll(
             msg.chat.id,
-            "Placez vos paris!",
+            "Placez vos paris! Vous avez 1 minute.",
             (1..=6).map(|x| x.to_string()),
         )
         .is_anonymous(false);
@@ -36,8 +36,10 @@ pub(crate) async fn start_loto(
 
     let poll = poll.await?;
 
+    bot.pin_chat_message(msg.chat.id, poll.id).await?;
+
     tokio::spawn(async move {
-        tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+        tokio::time::sleep(std::time::Duration::from_secs(60)).await;
         let _ = draw_loto(bot, dialogue, msg, poll, poll_answers).await;
     });
 
@@ -52,10 +54,12 @@ async fn draw_loto(
     poll_answers: Arc<Mutex<HashMap<UserId, u8>>>,
 ) -> HandlerResult {
     bot.stop_poll(msg.chat.id, poll.id).await?;
-    let mut message = bot.send_message(
-        msg.chat.id,
-        "Les paris sont fermés. C'est l'heure du lancé...",
-    );
+    let mut message = bot
+        .send_message(
+            msg.chat.id,
+            "Les paris sont fermés. C'est l'heure du lancé...",
+        )
+        .reply_parameters(ReplyParameters::new(poll.id));
     let mut dice = bot.send_dice(msg.chat.id);
     if let Some(thread_msg_id) = msg.thread_id {
         message = message.message_thread_id(thread_msg_id);
@@ -63,6 +67,9 @@ async fn draw_loto(
     }
     message.await?;
     let dice = dice.await?;
+    bot.unpin_chat_message(msg.chat.id)
+        .message_id(poll.id)
+        .await?;
 
     let dice_value = dice.dice().unwrap().value;
 

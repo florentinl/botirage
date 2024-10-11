@@ -31,7 +31,7 @@ pub(crate) async fn emoji_games_handler(
         _ => unreachable!(),
     };
 
-    let (reaction, score) = match dice_message {
+    let (reaction, score, delay) = match dice_message {
         Dice {
             emoji: DiceEmoji::SlotMachine,
             value,
@@ -52,25 +52,11 @@ pub(crate) async fn emoji_games_handler(
             emoji: DiceEmoji::Football,
             value,
         } => football_handler(value),
-        Dice {
-            emoji: DiceEmoji::Dice,
-            value: _,
-        } => {
-            bot.send_message(
-                msg.chat.id,
-                format!(
-                    "Attention @{}! Seul le maître du jeu peut lancer les dés!",
-                    msg.from.unwrap().username.unwrap()
-                ),
-            )
-            .await?;
-            bot.delete_message(msg.chat.id, msg.id).await?;
-            return Ok(());
-        }
+        _ => return Ok(()),
     };
 
     tokio::spawn(async move {
-        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+        tokio::time::sleep(std::time::Duration::from_secs(delay)).await;
         bot.set_message_reaction(msg.chat.id, msg.id)
             .reaction(vec![ReactionType::Emoji {
                 emoji: reaction.to_string(),
@@ -84,7 +70,7 @@ pub(crate) async fn emoji_games_handler(
     Ok(())
 }
 
-fn slot_machine_handler(value: u8) -> (&'static str, i64) {
+fn slot_machine_handler(value: u8) -> (&'static str, i64, u64) {
     let value = value - 1;
     let (left, middle, right) = (
         (value >> 4) & 0b11,
@@ -92,16 +78,18 @@ fn slot_machine_handler(value: u8) -> (&'static str, i64) {
         (value >> 0) & 0b11,
     );
 
-    match (left, middle, right) {
+    let (reaction, score) = match (left, middle, right) {
         (3, 3, 3) => ("🔥", 30),
         _ if left == middle && left == right => ("🎉", 10),
         _ if left == middle || middle == right || left == right => ("😢", -1),
         _ => ("🥱", -1),
-    }
+    };
+
+    (reaction, score, 2)
 }
 
-fn darts_handler(value: u8) -> (&'static str, i64) {
-    match value {
+fn darts_handler(value: u8) -> (&'static str, i64, u64) {
+    let (reaction, score) = match value {
         1 => ("🤡", -1),
         2 => ("🥱", -1),
         3 => ("🤔", -1),
@@ -109,22 +97,26 @@ fn darts_handler(value: u8) -> (&'static str, i64) {
         5 => ("🙊", -1),
         6 => ("😎", 20),
         _ => unreachable!(),
-    }
+    };
+
+    (reaction, score, 3)
 }
 
-fn basketball_handler(value: u8) -> (&'static str, i64) {
-    match value {
+fn basketball_handler(value: u8) -> (&'static str, i64, u64) {
+    let (reaction, score) = match value {
         1 => ("🫡", -1),
         2 => ("🥱", -1),
         3 => ("🥴", -1),
         4 => ("🆒", 10),
         5 => ("🤝", 20),
         _ => unreachable!(),
-    }
+    };
+
+    (reaction, score, 4)
 }
 
-fn bowling_handler(value: u8) -> (&'static str, i64) {
-    match value {
+fn bowling_handler(value: u8) -> (&'static str, i64, u64) {
+    let (reaction, score) = match value {
         1 => ("🌚", -1),
         2 => ("👨‍💻", -1),
         3 => ("🤷‍♀", -1),
@@ -132,11 +124,13 @@ fn bowling_handler(value: u8) -> (&'static str, i64) {
         5 => ("🤨", 20),
         6 => ("🗿", 30),
         _ => unreachable!(),
-    }
+    };
+
+    (reaction, score, 4)
 }
 
-fn football_handler(value: u8) -> (&'static str, i64) {
-    match value {
+fn football_handler(value: u8) -> (&'static str, i64, u64) {
+    let (reaction, score) = match value {
         1 => ("🌭", -1),
         2 => ("🐳", -1),
         3 => ("💅", 5),
@@ -144,5 +138,7 @@ fn football_handler(value: u8) -> (&'static str, i64) {
         5 => ("👏", 20),
         6 => ("🦄", 30),
         _ => unreachable!(),
-    }
+    };
+
+    (reaction, score, 4)
 }
