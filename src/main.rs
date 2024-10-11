@@ -46,10 +46,10 @@ async fn main() {
     bot.set_my_commands(Command::bot_commands()).await.unwrap();
     let poll_answers: Arc<Mutex<HashMap<UserId, u8>>> = Arc::new(Mutex::new(HashMap::default()));
 
-    let storage: Arc<ErasedStorage<State>> = SqliteStorage::open("database.db", Json)
-        .await
-        .unwrap()
-        .erase();
+    let path = std::env::var("DATABASE_PATH").unwrap_or_else(|_| "./database.db".to_string());
+
+    let storage: Arc<ErasedStorage<State>> =
+        SqliteStorage::open(&path, Json).await.unwrap().erase();
 
     Dispatcher::builder(bot, schema())
         .dependencies(dptree::deps![storage, poll_answers])
