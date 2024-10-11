@@ -11,8 +11,12 @@ use crate::{
 };
 
 pub(crate) async fn help(bot: BotType, msg: Message) -> HandlerResult {
-    bot.send_message(msg.chat.id, Command::descriptions().to_string())
-        .await?;
+    let mut message = bot.send_message(msg.chat.id, Command::descriptions().to_string());
+    if let Some(thread_msg_id) = msg.thread_id {
+        message = message.message_thread_id(thread_msg_id);
+    }
+    message.await?;
+
     Ok(())
 }
 
@@ -20,16 +24,21 @@ pub(crate) async fn balance(bot: BotType, dialogue: DialogueType, msg: Message) 
     let player = msg.clone().from.unwrap().id;
     let state = dialogue.get().await?.unwrap();
     let player_money = state.get(&player);
-    bot.send_message(
-        msg.chat.id,
-        format!(
-            "@{}, tu as {}💵!",
-            msg.from.unwrap().username.unwrap(),
-            player_money
-        ),
-    )
-    .reply_parameters(ReplyParameters::new(msg.id))
-    .await?;
+    let mut message = bot
+        .send_message(
+            msg.chat.id,
+            format!(
+                "@{}, tu as {}💵!",
+                msg.from.unwrap().username.unwrap(),
+                player_money
+            ),
+        )
+        .reply_parameters(ReplyParameters::new(msg.id));
+    if let Some(thread_msg_id) = msg.thread_id {
+        message = message.message_thread_id(thread_msg_id);
+    }
+    message.await?;
+
     Ok(())
 }
 
@@ -49,6 +58,11 @@ pub(crate) async fn leaderboard(
         ));
     }
 
-    bot.send_message(msg.chat.id, message).await?;
+    let mut message = bot.send_message(msg.chat.id, message);
+    if let Some(thread_msg_id) = msg.thread_id {
+        message = message.message_thread_id(thread_msg_id);
+    }
+    message.await?;
+
     Ok(())
 }

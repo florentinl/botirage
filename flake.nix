@@ -22,7 +22,6 @@
           inherit system;
           overlays = [ (import rust-overlay) ];
         };
-        pkgsCross = pkgs.pkgsCross.aarch64-multiplatform;
         rust = pkgs.rust-bin.stable.latest.default.override {
           extensions = [
             "rust-src"
@@ -57,8 +56,26 @@
             pkgs.sqlite
           ];
         };
-
-        packages.botirage = pkgsCross.rustPlatform.buildRustPackage {
+      }
+    )
+    // (
+      let
+        pkgsArm = import nixpkgs {
+          system = "aarch64-linux";
+          overlays = [ (import rust-overlay) ];
+        };
+        pkgsCross = import nixpkgs {
+          system = "x86_64-linux";
+          overlays = [
+            (import rust-overlay)
+          ];
+          crossSystem = {
+            config = "aarch64-unknown-linux-gnu";
+          };
+        };
+      in
+      {
+        packages.aarch64-linux.botirage = pkgsCross.rustPlatform.buildRustPackage {
           pname = "botirage";
           version = "0.1.0";
           src = ./.;
@@ -67,8 +84,8 @@
             pkgsCross.pkg-config
           ];
           buildInputs = [
-            pkgsCross.openssl
-            pkgsCross.sqlite
+            pkgsArm.openssl
+            pkgsArm.sqlite
           ];
         };
       }
