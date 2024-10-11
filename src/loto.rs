@@ -108,9 +108,25 @@ pub(crate) async fn register_answer(
     poll_answers: Arc<Mutex<HashMap<UserId, u8>>>,
     pa: PollAnswer,
 ) -> HandlerResult {
-    poll_answers.lock().unwrap().insert(
-        pa.voter.user().unwrap().id,
-        pa.option_ids.first().unwrap() + 1,
-    );
+    match pa {
+        PollAnswer {
+            option_ids,
+            voter,
+            poll_id: _,
+        } => {
+            if let Some(option_id) = option_ids.first() {
+                poll_answers
+                    .lock()
+                    .unwrap()
+                    .insert(voter.user().unwrap().id, *option_id);
+            } else {
+                // Remove the user's answer if they removed their vote
+                poll_answers
+                    .lock()
+                    .unwrap()
+                    .remove(&voter.user().unwrap().id);
+            }
+        }
+    };
     Ok(())
 }
