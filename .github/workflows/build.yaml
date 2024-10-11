@@ -16,6 +16,6 @@ jobs:
             name: florentinl
             authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
         - run: |
-            nix build .#packages.aarch64-linux.botirage --json \
+            nix build .#packages.cross.botirage --json \
                 | jq -r '.[].outputs | to_entries[].value' \
                 | cachix push florentinl

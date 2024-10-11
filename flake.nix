@@ -75,13 +75,15 @@
         };
       in
       {
-        packages.aarch64-linux.botirage = pkgsCross.rustPlatform.buildRustPackage {
+        packages.cross.botirage = pkgsCross.rustPlatform.buildRustPackage {
           pname = "botirage";
           version = "0.1.0";
           src = ./.;
           cargoLock.lockFile = ./Cargo.lock;
           nativeBuildInputs = [
             pkgsCross.pkg-config
+            pkgsArm.openssl
+            pkgsArm.sqlite
           ];
           buildInputs = [
             pkgsArm.openssl
