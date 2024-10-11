@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 use commands::{balance, help, leaderboard};
 use emoji_games::emoji_games_handler;
 use log::info;
-use loto::{register_answer, start_loto};
+use loto::{register_answer, reset_roll, start_loto};
 use state::State;
 use teloxide::adaptors::throttle::Limits;
 use teloxide::dispatching::dialogue::serializer::Json;
@@ -32,6 +32,8 @@ enum Command {
     Help,
     #[command(description = "(bêta) Lance une loterie")]
     Roll,
+    #[command(description = "Réinitialise la loterie", hide)]
+    ResetRoll,
     #[command(description = "Regarde ton solde")]
     Balance,
     #[command(description = "Classement des gens les plus riches")]
@@ -66,6 +68,7 @@ fn schema() -> UpdateHandler<Box<dyn Error + Send + Sync + 'static>> {
         .branch(case![Command::Help].endpoint(help))
         .branch(case![Command::Balance].endpoint(balance))
         .branch(case![Command::Leaderboard].endpoint(leaderboard))
+        .branch(case![Command::ResetRoll].endpoint(reset_roll))
         .branch(
             case![State::Idle { player_money }]
                 .branch(case![Command::Roll].endpoint(start_loto))

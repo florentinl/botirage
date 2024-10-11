@@ -125,7 +125,7 @@ pub(crate) async fn register_answer(
                 poll_answers
                     .lock()
                     .unwrap()
-                    .insert(voter.user().unwrap().id, *option_id);
+                    .insert(voter.user().unwrap().id, *option_id + 1);
             } else {
                 // Remove the user's answer if they removed their vote
                 poll_answers
@@ -135,5 +135,11 @@ pub(crate) async fn register_answer(
             }
         }
     };
+    Ok(())
+}
+
+pub(crate) async fn reset_roll(dialogue: DialogueType) -> HandlerResult {
+    let state = dialogue.get().await?.unwrap();
+    dialogue.update(state.to_idle()).await?;
     Ok(())
 }
