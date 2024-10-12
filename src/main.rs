@@ -3,8 +3,8 @@ use std::error::Error;
 use std::sync::{Arc, Mutex};
 
 use commands::{balance, help, leaderboard};
-use emoji_games::{emoji_games_handler, stats_handler};
-use log::info;
+use emoji_games::emoji_games_handler;
+use log::{info, warn};
 use loto::{register_answer, reset_roll, start_loto};
 use state::State;
 use teloxide::adaptors::throttle::Limits;
@@ -38,8 +38,6 @@ enum Command {
     Balance,
     #[command(description = "Classement des gens les plus riches")]
     Leaderboard,
-    #[command(description = "Affiche les stats pour un jeu donné", hide)]
-    Stats { emoji: String },
 }
 
 #[tokio::main]
@@ -47,7 +45,9 @@ async fn main() {
     pretty_env_logger::init();
     info!("Starting bot...");
     let bot = Bot::from_env().throttle(Limits::default());
-    bot.set_my_commands(Command::bot_commands()).await.unwrap();
+    if let Err(err) = bot.set_my_commands(Command::bot_commands()).await {
+        warn!("Failed to set commands: {}", err);
+    }
     let poll_answers: Arc<Mutex<HashMap<UserId, u8>>> = Arc::new(Mutex::new(HashMap::default()));
 
     let path = std::env::var("DATABASE_PATH").unwrap_or_else(|_| "./database.db".to_string());
@@ -71,14 +71,10 @@ fn schema() -> UpdateHandler<Box<dyn Error + Send + Sync + 'static>> {
         .branch(case![Command::Balance].endpoint(balance))
         .branch(case![Command::Leaderboard].endpoint(leaderboard))
         .branch(case![Command::ResetRoll].endpoint(reset_roll))
-        .branch(case![Command::Stats { emoji }].endpoint(stats_handler))
         .branch(
-            case![State::Idle {
-                player_money,
-                game_stats
-            }]
-            .branch(case![Command::Roll].endpoint(start_loto))
-            .branch(dptree::endpoint(invalid_state)),
+            case![State::Idle { player_money }]
+                .branch(case![Command::Roll].endpoint(start_loto))
+                .branch(dptree::endpoint(invalid_state)),
         );
 
     let message_handler = Update::filter_message()
@@ -93,7 +89,7 @@ fn schema() -> UpdateHandler<Box<dyn Error + Send + Sync + 'static>> {
 }
 
 async fn message_handler(bot: BotType, dialogue: DialogueType, msg: Message) -> HandlerResult {
-    if let MessageKind::Dice(_) = msg.kind.clone() {
+    if let MessageKind::Dice(_) = msg.kind {
         emoji_games_handler(bot, dialogue, msg).await?;
     }
 

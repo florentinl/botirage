@@ -6,7 +6,9 @@ use std::{
 use teloxide::{
     payloads::{SendDiceSetters, SendMessageSetters, SendPollSetters, UnpinChatMessageSetters},
     requests::Requester,
-    types::{Message, PollAnswer, ReplyParameters, UserId},
+    types::{
+        Dice, DiceEmoji, Message, MessageDice, MessageKind, PollAnswer, ReplyParameters, UserId,
+    },
 };
 
 use crate::utils::{get_usernames, BotType, DialogueType, HandlerResult};
@@ -17,9 +19,12 @@ pub(crate) async fn start_loto(
     poll_answers: Arc<Mutex<HashMap<UserId, u8>>>,
     msg: Message,
 ) -> HandlerResult {
-    poll_answers.lock().unwrap().clear();
+    poll_answers
+        .lock()
+        .unwrap_or_else(|err| err.into_inner())
+        .clear();
 
-    let state = dialogue.get().await?.unwrap();
+    let state = dialogue.get().await?.ok_or("No state")?;
     dialogue.update(state.to_receiving_poll_answers()).await?;
 
     let mut poll = bot
@@ -71,9 +76,24 @@ async fn draw_loto(
         .message_id(poll.id)
         .await?;
 
-    let dice_value = dice.dice().unwrap().value;
+    let dice_value = match dice.kind {
+        MessageKind::Dice(MessageDice {
+            dice:
+                Dice {
+                    emoji: DiceEmoji::Dice,
+                    value,
+                },
+        }) => value,
+        _ => return Err("How the fuck did telegram turn a dice into something else ?".into()),
+    };
 
-    let winner_ids = get_winner_ids(&poll_answers.lock().unwrap().to_owned(), dice_value);
+    let winner_ids = get_winner_ids(
+        &poll_answers
+            .lock()
+            .unwrap_or_else(|err| err.into_inner())
+            .to_owned(),
+        dice_value,
+    );
     let winners = get_usernames(&bot, &msg.chat.id, &winner_ids).await;
 
     tokio::time::sleep(std::time::Duration::from_secs(4)).await;
@@ -121,17 +141,13 @@ pub(crate) async fn register_answer(
             voter,
             poll_id: _,
         } => {
+            let mut poll_answers = poll_answers.lock().unwrap_or_else(|err| err.into_inner());
+            let voter = voter.user().ok_or("Voter vanished from channel")?;
             if let Some(option_id) = option_ids.first() {
-                poll_answers
-                    .lock()
-                    .unwrap()
-                    .insert(voter.user().unwrap().id, *option_id + 1);
+                poll_answers.insert(voter.id, *option_id + 1);
             } else {
                 // Remove the user's answer if they removed their vote
-                poll_answers
-                    .lock()
-                    .unwrap()
-                    .remove(&voter.user().unwrap().id);
+                poll_answers.remove(&voter.id);
             }
         }
     };
@@ -139,7 +155,7 @@ pub(crate) async fn register_answer(
 }
 
 pub(crate) async fn reset_roll(dialogue: DialogueType) -> HandlerResult {
-    let state = dialogue.get().await?.unwrap();
+    let state = dialogue.get().await?.ok_or("No state")?;
     dialogue.update(state.to_idle()).await?;
     Ok(())
 }

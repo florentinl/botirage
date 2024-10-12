@@ -4,62 +4,21 @@ use teloxide::{
     types::{Dice, DiceEmoji, Message, MessageDice, MessageKind, ReactionType},
 };
 
-use crate::{
-    utils::{BotType, DialogueType, HandlerResult},
-    Command,
-};
-
-pub(crate) async fn stats_handler(
-    bot: BotType,
-    dialogue: DialogueType,
-    msg: Message,
-    cmd: Command,
-) -> HandlerResult {
-    let state = dialogue.get().await?.unwrap();
-    let stats = state.game_stats();
-    let emoji = match cmd {
-        Command::Stats { emoji } => emoji,
-        _ => unreachable!(),
-    };
-    let dice_emoji = match emoji.as_str() {
-        "🎲" => DiceEmoji::Dice,
-        "🎯" => DiceEmoji::Darts,
-        "🏀" => DiceEmoji::Basketball,
-        "🎳" => DiceEmoji::Bowling,
-        "⚽" => DiceEmoji::Football,
-        "🎰" => DiceEmoji::SlotMachine,
-        _ => return Ok(()),
-    };
-    let mut message = format!("Statistiques pour {}: \n", emoji);
-    let mut stats_vec = stats
-        .get(&dice_emoji)
-        .unwrap()
-        .into_iter()
-        .collect::<Vec<_>>();
-    stats_vec.sort_by_key(|(value, _)| *value);
-
-    for (outcome, count) in stats_vec {
-        message.push_str(&format!("{}: {}\n", outcome, count));
-    }
-
-    bot.send_message(msg.chat.id, message).await?;
-
-    Ok(())
-}
+use crate::utils::{BotType, DialogueType, HandlerResult};
 
 pub(crate) async fn emoji_games_handler(
     bot: BotType,
     dialogue: DialogueType,
     msg: Message,
 ) -> HandlerResult {
-    let player = msg.clone().from.unwrap().id;
-    let mut state = dialogue.get().await?.unwrap();
-    if state.get(&player) < 1 {
+    let mut state = dialogue.get().await?.ok_or("No state")?;
+    let player = msg.from.ok_or("The message poster has disappeared")?;
+    if state.get(&player.id) < &1 {
         bot.send_message(
             msg.chat.id,
             format!(
                 "@{}, tu n'as plus assez d'argent pour jouer! Essaie de soudoyer le maître du jeu pour obtenir plus de 💵!",
-                msg.from.unwrap().username.unwrap()
+                player.username.unwrap_or(player.first_name)
             ),
         )
         .await?;
@@ -67,38 +26,21 @@ pub(crate) async fn emoji_games_handler(
         return Ok(());
     }
 
-    let dice_message = match msg.kind.clone() {
+    let dice_message = match msg.kind {
         MessageKind::Dice(MessageDice { dice: dice_message }) => dice_message,
         _ => unreachable!(),
     };
 
-    match dice_message {
-        Dice { emoji, value } => {
-            state.register_game_result(emoji, value);
-        }
-    }
+    let (emoji, value) = match dice_message {
+        Dice { emoji, value } => (emoji, value),
+    };
 
-    let (reaction, score, delay) = match dice_message {
-        Dice {
-            emoji: DiceEmoji::SlotMachine,
-            value,
-        } => slot_machine_handler(value),
-        Dice {
-            emoji: DiceEmoji::Darts,
-            value,
-        } => darts_handler(value),
-        Dice {
-            emoji: DiceEmoji::Basketball,
-            value,
-        } => basketball_handler(value),
-        Dice {
-            emoji: DiceEmoji::Bowling,
-            value,
-        } => bowling_handler(value),
-        Dice {
-            emoji: DiceEmoji::Football,
-            value,
-        } => football_handler(value),
+    let (reaction, score, delay) = match emoji {
+        DiceEmoji::SlotMachine => slot_machine_handler(value),
+        DiceEmoji::Darts => darts_handler(value),
+        DiceEmoji::Basketball => basketball_handler(value),
+        DiceEmoji::Bowling => bowling_handler(value),
+        DiceEmoji::Football => football_handler(value),
         _ => return Ok(()),
     };
 
@@ -111,7 +53,7 @@ pub(crate) async fn emoji_games_handler(
             .await
     });
 
-    state.insert(&player, score);
+    state.insert(&player.id, score);
     dialogue.update(state).await?;
 
     Ok(())
