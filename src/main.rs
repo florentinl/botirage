@@ -70,9 +70,12 @@ fn schema() -> UpdateHandler<Box<dyn Error + Send + Sync + 'static>> {
         .branch(case![Command::Leaderboard].endpoint(leaderboard))
         .branch(case![Command::ResetRoll].endpoint(reset_roll))
         .branch(
-            case![State::Idle { player_money }]
-                .branch(case![Command::Roll].endpoint(start_loto))
-                .branch(dptree::endpoint(invalid_state)),
+            case![State::Idle {
+                player_money,
+                game_stats
+            }]
+            .branch(case![Command::Roll].endpoint(start_loto))
+            .branch(dptree::endpoint(invalid_state)),
         );
 
     let message_handler = Update::filter_message()

@@ -31,6 +31,12 @@ pub(crate) async fn emoji_games_handler(
         _ => unreachable!(),
     };
 
+    match dice_message {
+        Dice { emoji, value } => {
+            state.register_game_result(emoji, value);
+        }
+    }
+
     let (reaction, score, delay) = match dice_message {
         Dice {
             emoji: DiceEmoji::SlotMachine,
