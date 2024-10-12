@@ -49,7 +49,7 @@ pub(crate) async fn leaderboard(
 ) -> HandlerResult {
     let state = dialogue.get().await?.unwrap();
     let leaderboard = state.leaderboard();
-    let mut message = "Classement ForbeCS:\n".to_owned();
+    let mut message = "Classement ForbeSupélec:\n".to_owned();
     for &(user_id, money) in leaderboard.iter().take(10) {
         message.push_str(&format!(
             "{}: {}💵\n",
