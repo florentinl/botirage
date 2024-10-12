@@ -47,7 +47,7 @@ impl State {
         }
     }
 
-    fn game_stats(&self) -> &HashMap<DiceEmoji, HashMap<u8, u64>> {
+    pub(crate) fn game_stats(&self) -> &HashMap<DiceEmoji, HashMap<u8, u64>> {
         match self {
             Self::Idle {
                 player_money: _,

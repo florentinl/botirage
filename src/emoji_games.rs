@@ -4,7 +4,48 @@ use teloxide::{
     types::{Dice, DiceEmoji, Message, MessageDice, MessageKind, ReactionType},
 };
 
-use crate::utils::{BotType, DialogueType, HandlerResult};
+use crate::{
+    utils::{BotType, DialogueType, HandlerResult},
+    Command,
+};
+
+pub(crate) async fn stats_handler(
+    bot: BotType,
+    dialogue: DialogueType,
+    msg: Message,
+    cmd: Command,
+) -> HandlerResult {
+    let state = dialogue.get().await?.unwrap();
+    let stats = state.game_stats();
+    let emoji = match cmd {
+        Command::Stats { emoji } => emoji,
+        _ => unreachable!(),
+    };
+    let dice_emoji = match emoji.as_str() {
+        "🎲" => DiceEmoji::Dice,
+        "🎯" => DiceEmoji::Darts,
+        "🏀" => DiceEmoji::Basketball,
+        "🎳" => DiceEmoji::Bowling,
+        "⚽" => DiceEmoji::Football,
+        "🎰" => DiceEmoji::SlotMachine,
+        _ => return Ok(()),
+    };
+    let mut message = format!("Statistiques pour {}: \n", emoji);
+    let mut stats_vec = stats
+        .get(&dice_emoji)
+        .unwrap()
+        .into_iter()
+        .collect::<Vec<_>>();
+    stats_vec.sort_by_key(|(value, _)| *value);
+
+    for (outcome, count) in stats_vec {
+        message.push_str(&format!("{}: {}\n", outcome, count));
+    }
+
+    bot.send_message(msg.chat.id, message).await?;
+
+    Ok(())
+}
 
 pub(crate) async fn emoji_games_handler(
     bot: BotType,
