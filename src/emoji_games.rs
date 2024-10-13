@@ -13,7 +13,7 @@ pub(crate) async fn emoji_games_handler(
 ) -> HandlerResult {
     let mut state = dialogue.get().await?.ok_or("No state")?;
     let player = msg.from.ok_or("The message poster has disappeared")?;
-    if state.get(&player.id) < &1 {
+    if msg.chat.id.0 != -1001434638400 && state.get(&player.id) < &1 {
         bot.send_message(
             msg.chat.id,
             format!(
