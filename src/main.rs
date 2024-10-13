@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 
-use commands::{balance, help, leaderboard};
+use commands::{balance, give_money, help, leaderboard};
 use emoji_games::emoji_games_handler;
 use log::{info, warn};
 use loto::{register_answer, reset_roll, start_loto};
@@ -38,6 +38,8 @@ enum Command {
     Balance,
     #[command(description = "Classement des gens les plus riches")]
     Leaderboard,
+    #[command(description = "Renfloue le compte de quelqu'un", hide)]
+    Give,
 }
 
 #[tokio::main]
@@ -71,6 +73,7 @@ fn schema() -> UpdateHandler<Box<dyn Error + Send + Sync + 'static>> {
         .branch(case![Command::Balance].endpoint(balance))
         .branch(case![Command::Leaderboard].endpoint(leaderboard))
         .branch(case![Command::ResetRoll].endpoint(reset_roll))
+        .branch(case![Command::Give].endpoint(give_money))
         .branch(
             case![State::Idle { player_money }]
                 .branch(case![Command::Roll].endpoint(start_loto))

@@ -1,7 +1,7 @@
 use teloxide::{
-    payloads::SendMessageSetters,
+    payloads::{SendMessageSetters, SetMessageReactionSetters},
     requests::Requester,
-    types::{Message, ReplyParameters},
+    types::{Message, ReactionType, ReplyParameters},
     utils::command::BotCommands,
 };
 
@@ -65,6 +65,53 @@ pub(crate) async fn leaderboard(
         message = message.message_thread_id(thread_msg_id);
     }
     message.await?;
+
+    Ok(())
+}
+
+pub(crate) async fn give_money(
+    bot: BotType,
+    dialogue: DialogueType,
+    msg: Message,
+) -> HandlerResult {
+    if msg.clone().from.map(|user| user.id.0) != Some(1908102113) {
+        bot.set_message_reaction(msg.chat.id, msg.id)
+            .reaction(vec![ReactionType::Emoji {
+                emoji: "🤣".to_string(),
+            }])
+            .await?;
+
+        return Ok(()); // Only the bot owner can give money
+    }
+
+    // Ensure that the msg is a reply to another message
+    let reply_to = msg.reply_to_message().ok_or("No message to reply to");
+    let player = match reply_to {
+        Ok(reply) => reply
+            .to_owned()
+            .from
+            .ok_or("The message poster has disappeared")?,
+        Err(_) => {
+            bot.set_message_reaction(msg.chat.id, msg.id)
+                .reaction(vec![ReactionType::Emoji {
+                    emoji: "🤔".to_string(),
+                }])
+                .await?;
+
+            return Ok(());
+        }
+    };
+
+    let mut state = dialogue.get().await?.ok_or("No state")?;
+    state.insert(&player.id, 100);
+
+    bot.set_message_reaction(msg.chat.id, msg.id)
+        .reaction(vec![ReactionType::Emoji {
+            emoji: "👍".to_string(),
+        }])
+        .await?;
+
+    dialogue.update(state).await?;
 
     Ok(())
 }
