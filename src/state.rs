@@ -1,13 +1,18 @@
 use std::collections::HashMap;
 
-use teloxide::types::UserId;
+use teloxide::types::{Message, UserId};
 
 const DEFAULT_MONEY: i64 = 100;
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub(crate) enum State {
-    Idle { player_money: HashMap<UserId, i64> },
-    ReceivingPollAnswers { player_money: HashMap<UserId, i64> },
+    Idle {
+        player_money: HashMap<UserId, i64>,
+    },
+    ReceivingPollAnswers {
+        poll: Message,
+        player_money: HashMap<UserId, i64>,
+    },
 }
 
 impl Default for State {
@@ -22,14 +27,20 @@ impl State {
     fn player_money(&self) -> &HashMap<UserId, i64> {
         match self {
             Self::Idle { player_money } => player_money,
-            Self::ReceivingPollAnswers { player_money } => player_money,
+            Self::ReceivingPollAnswers {
+                poll: _,
+                player_money,
+            } => player_money,
         }
     }
 
     fn player_money_mut(&mut self) -> &mut HashMap<UserId, i64> {
         match self {
             Self::Idle { player_money } => player_money,
-            Self::ReceivingPollAnswers { player_money } => player_money,
+            Self::ReceivingPollAnswers {
+                poll: _,
+                player_money,
+            } => player_money,
         }
     }
 
@@ -57,14 +68,17 @@ impl State {
     pub(crate) fn to_idle(self) -> Self {
         match self {
             Self::Idle { .. } => self,
-            Self::ReceivingPollAnswers { player_money } => Self::Idle { player_money },
+            Self::ReceivingPollAnswers {
+                poll: _,
+                player_money,
+            } => Self::Idle { player_money },
         }
     }
 
-    pub(crate) fn to_receiving_poll_answers(self) -> Self {
+    pub(crate) fn to_receiving_poll_answers(self, poll: Message) -> Self {
         match self {
             Self::ReceivingPollAnswers { .. } => self,
-            Self::Idle { player_money } => Self::ReceivingPollAnswers { player_money },
+            Self::Idle { player_money } => Self::ReceivingPollAnswers { poll, player_money },
         }
     }
 }
