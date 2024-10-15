@@ -20,10 +20,13 @@ pub(crate) async fn get_username(
     chat_id: ChatId,
     user_id: &UserId,
 ) -> Result<String, Box<dyn Error>> {
-    let user = bot.get_chat_member(chat_id, *user_id).await?.user;
-    match user.username {
+    let member = bot.get_chat_member(chat_id, *user_id).await?;
+    if member.user.is_anonymous() {
+        return Ok(member.custom_title().unwrap_or("Annoymous".into()).into());
+    }
+    match member.user.username {
         Some(username) => Ok(username),
-        None => Ok(format!("{}(mets un pseudo stp)", user.first_name)),
+        None => Ok(format!("{}(mets un pseudo stp)", member.user.first_name)),
     }
 }
 
