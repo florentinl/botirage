@@ -52,7 +52,6 @@
           buildInputs = [
             rust
             pkgs.pkg-config
-            pkgs.openssl
             pkgs.sqlite
           ];
 
@@ -68,7 +67,6 @@
             pkgs.pkg-config
           ];
           buildInputs = [
-            pkgs.openssl
             pkgs.sqlite
           ];
         };
@@ -82,7 +80,6 @@
           ];
 
           buildInputs = with pkgsCross.pkgsHostHost; [
-            openssl
             sqlite
           ];
 
