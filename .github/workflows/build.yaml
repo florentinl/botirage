@@ -9,4 +9,6 @@ jobs:
     steps:
         - uses: actions/checkout@v4
         - run: |
-            nix build
+            nix build --json \
+            | jq -r '.[].outputs | to_entries[].value' \
+            | cachix push florentinl
