@@ -45,7 +45,7 @@ enum Command {
 #[tokio::main]
 async fn main() {
     pretty_env_logger::init();
-    info!("Starting bot....");
+    info!("Starting bot...");
     let bot = Bot::from_env().throttle(Limits::default());
     if let Err(err) = bot.set_my_commands(Command::bot_commands()).await {
         warn!("Failed to set commands: {}", err);
