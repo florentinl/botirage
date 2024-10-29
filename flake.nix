@@ -159,6 +159,9 @@
         }
       )
       // {
+        hydraJobs = {
+          build = self.defaultPackage.aarch64-linux;
+        };
       }
     );
 }
