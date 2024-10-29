@@ -30,7 +30,7 @@ mod utils;
 enum Command {
     #[command(description = "Affiche ce texte")]
     Help,
-    #[command(description = "(bêta) Lance une loterie")]
+    #[command(description = "Lance une loterie")]
     Roll,
     #[command(description = "Réinitialise la loterie", hide)]
     ResetRoll,
