@@ -1,0 +1,14 @@
+{
+    "aarch64-linux": {
+        "flake": "git+ssh://git@github.com/florentinl/botirage",
+        "enabled": 1,
+        "type": 1,
+        "hidden": false,
+        "description": "Build main branch updates",
+        "checkinterval": 300,
+        "keepnr": 5,
+        "schedulingshares": 1,
+        "enableemail": false,
+        "emailoverride": ""
+    }
+}
