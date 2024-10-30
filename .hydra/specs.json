@@ -1,6 +1,6 @@
 {
     "aarch64-linux": {
-        "flake": "git+ssh://git@github.com/florentinl/botirage",
+        "flake": "github:florentinl/botirage",
         "enabled": 1,
         "type": 1,
         "hidden": false,
