@@ -159,10 +159,6 @@
         }
       )
       // {
-        hydraJobs = {
-          build = self.defaultPackage.aarch64-linux;
-        };
-
         checks = {
           botirage-aarch64 = self.defaultPackage.aarch64-linux;
         };
