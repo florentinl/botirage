@@ -100,7 +100,7 @@ async fn message_handler(bot: BotType, dialogue: DialogueType, msg: Message) -> 
 }
 
 async fn invalid_state(bot: BotType, msg: Message) -> HandlerResult {
-    bot.send_message(msg.chat.id, "Commande indisponible")
+    bot.send_message(msg.chat.id, "Commande indisponible, c'est pas bien")
         .await?;
 
     Ok(())
