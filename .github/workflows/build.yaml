@@ -1,0 +1,15 @@
+# Let's create a github action that setups nix and builds the default package
+name: Build
+
+on:
+    push:
+        branches:
+            - main
+
+jobs:
+    build:
+        runs-on: ubuntu-24.04-arm
+        steps:
+            - uses: actions/checkout@v3
+            - uses: cachix/install-nix-action@v30
+            - run: nix build
