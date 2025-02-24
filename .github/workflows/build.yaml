@@ -2,14 +2,29 @@
 name: Build
 
 on:
-    push:
-        branches:
-            - main
+  push:
+    branches:
+      - main
 
 jobs:
-    build:
-        runs-on: ubuntu-24.04-arm
-        steps:
-            - uses: actions/checkout@v3
-            - uses: cachix/install-nix-action@v30
-            - run: nix build
+  build:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      # Setup tailscale
+      - uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
+      # Setup Nix
+      - uses: cachix/install-nix-action@v30
+      - uses: ryanccn/attic-action@v0
+        with:
+          endpoint: http://carly:8080
+          cache: default
+          token: ${{ secrets.ATTIC_TOKEN }}
+
+      # Build software
+      - uses: actions/checkout@v3
+      - run: nix build
