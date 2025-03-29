@@ -167,7 +167,7 @@ async fn draw_die(
 ) -> Result<u8, Box<dyn Error + Send + Sync>> {
     let mut message = bot.send_message(
         msg.chat.id,
-        "Les paris sont fermés. C'est l'heure du lancé...",
+        "Les paris sont fermés. C'est l'heure du lancer...",
     );
     let mut dice = bot.send_dice(msg.chat.id);
     if let Some(thread_msg_id) = msg.thread_id {
